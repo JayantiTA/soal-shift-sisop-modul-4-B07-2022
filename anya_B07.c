@@ -13,6 +13,7 @@
 
 static int ANIMEKU = 0;
 static int IAN = 1;
+static int NAM_DO_SAQ = 2;
 
 static char rootPath[1024];
 static char wibuLogPath[1024];
@@ -70,26 +71,53 @@ char vigenereCipherDecode(char c, int i)
 	return c;
 }
 
+int isRegularFile(const char *path)
+{
+	struct stat pathStat;
+	stat(path, &pathStat);
+	return S_ISREG(pathStat.st_mode);
+}
+
 void decryptText(char *str, int startIndex, int endIndex, int encryptionType)
 {
 	int vigenereIndex = 0;
-	for (int i = startIndex; i < endIndex; i++)
+	
+	if (encryptionType != NAM_DO_SAQ && encryptionType != -1)
 	{
-		if (encryptionType == ANIMEKU)
+		for (int i = startIndex; i < endIndex; i++)
 		{
-			if (str[i] >= 'a' && str[i] <= 'z')
+			if (encryptionType == ANIMEKU)
 			{
-				str[i] = rot13(str[i]);
+				if (str[i] >= 'a' && str[i] <= 'z')
+				{
+					str[i] = rot13(str[i]);
+				}
+				else if (str[i] >= 'A' && str[i] <= 'Z')
+				{
+					str[i] = atbashCipher(str[i]);
+				}
 			}
-			else if (str[i] >= 'A' && str[i] <= 'Z')
+			else if (encryptionType == IAN)
 			{
-				str[i] = atbashCipher(str[i]);
+				str[i] = vigenereCipherDecode(str[i], vigenereIndex);
+				vigenereIndex++;
 			}
 		}
-		else if (encryptionType == IAN)
+	}
+	else if (encryptionType == NAM_DO_SAQ)
+	{
+		int strLength = strlen(str);
+		if (endIndex != -1)
 		{
-			str[i] = vigenereCipherDecode(str[i], vigenereIndex);
-			vigenereIndex++;
+			while(endIndex < strLength)
+			{
+				if (str[endIndex] == '1')
+				{
+					str[startIndex] = str[startIndex] - 'A' + 'a';
+				}
+				startIndex++;
+				endIndex++;
+			}
 		}
 	}
 }
@@ -116,24 +144,37 @@ void decryptFile(char *str, int startIndex, int endIndex, int encryptionType)
 	{
 		decryptText(str, startIndex, endIndex, encryptionType);
 	}
-}
-
-void decodeDirectoryPath(const char *path, int encryptionType)
-{
-	int idx = 0;
-	int length = strlen(path);
-	char *slashPos;
-	while(idx < length)
+	else if (encryptionType == NAM_DO_SAQ)
 	{
-		if ((slashPos = strstr(path + idx, "/")) != NULL)
+		while(fileExtensionPos >= startIndex && str[fileExtensionPos] != '.')
 		{
-			decryptText(path, idx, slashPos - path, encryptionType);
-			idx = slashPos - path + 1;
+			fileExtensionPos--;
+		}
+		if (fileExtensionPos < startIndex)
+		{
+			decryptText(str, startIndex, -1, encryptionType);
 		}
 		else
 		{
-			decryptFile(path, idx, length, encryptionType);
-			idx = length;
+			decryptText(str, startIndex, fileExtensionPos + 1, encryptionType);
+			str[fileExtensionPos] = '\0';
+		}
+	}
+}
+
+void decodeDirectoryPath(const char *path, int offset, int length, int encryptionType)
+{
+	char *slashPos = NULL;
+
+	if (offset < length)
+	{
+		if ((slashPos = strstr(path + offset, "/")) != NULL)
+		{
+			decryptText(path, offset, slashPos - path, encryptionType);
+		}
+		else
+		{
+			decryptFile(path, offset, length, encryptionType);
 		}
 	}
 }
@@ -141,31 +182,53 @@ void decodeDirectoryPath(const char *path, int encryptionType)
 void encryptText(char *str, int startIndex, int endIndex, int encryptionType)
 {
 	int vigenereIndex = 0;
-	for (int i = startIndex; i < endIndex; i++)
+	if (encryptionType != NAM_DO_SAQ)
 	{
-		if (encryptionType == ANIMEKU)
+		for (int i = startIndex; i < endIndex; i++)
+		{
+			if (encryptionType == ANIMEKU)
+			{
+				if (str[i] >= 'a' && str[i] <= 'z')
+				{
+					str[i] = rot13(str[i]);
+				}
+				else if (str[i] >= 'A' && str[i] <= 'Z')
+				{
+					str[i] = atbashCipher(str[i]);
+				}
+			}
+			else if (encryptionType == IAN)
+			{
+				str[i] = vigenereCipherEncode(str[i], vigenereIndex);
+				vigenereIndex++;
+			}
+		}
+	}
+	else
+	{
+		char biner[endIndex - startIndex + 1];
+		for (int i = 0; i < endIndex - startIndex; i++)
 		{
 			if (str[i] >= 'a' && str[i] <= 'z')
 			{
-				str[i] = rot13(str[i]);
+				str[i] = str[i] - 'a' + 'A';
+				biner[i] = '1';
 			}
-			else if (str[i] >= 'A' && str[i] <= 'Z')
+			else
 			{
-				str[i] = atbashCipher(str[i]);
+				biner[i] = '0';
 			}
 		}
-		else if (encryptionType == IAN)
-		{
-			str[i] = vigenereCipherEncode(str[i], vigenereIndex);
-			vigenereIndex++;
-		}
+		biner[endIndex - startIndex] = '\0';
+		strcat(str, ".");
+		strcat(str, biner);	 
 	}
 }
 
 void encryptFile(char *str, int startIndex, int endIndex, int encryptionType)
 {
 	int fileExtensionPos = endIndex - 1;
-	if (encryptionType == ANIMEKU)
+	if (encryptionType == ANIMEKU || encryptionType == NAM_DO_SAQ)
 	{
 		while(fileExtensionPos >= startIndex && str[fileExtensionPos] != '.')
 		{
@@ -188,32 +251,28 @@ void encryptFile(char *str, int startIndex, int endIndex, int encryptionType)
 
 int getEncryptionType(const char *path, int *offset)
 {
-	char *pos;
 	int encryptionType = -1;
-	if ((pos = strstr(path, "/Animeku_")) != NULL)
+	if (strncmp(path + *offset, "/Animeku_", 9) == 0)
 	{
 		encryptionType = ANIMEKU;
 	}
-	else if ((pos = strstr(path, "/IAN_")) != NULL)
+	else if (strncmp(path + *offset, "/IAN_", 5) == 0)
 	{
 		encryptionType = IAN;
 	}
+	else if (strncmp(path + *offset, "/nam_do-saq_", 12) == 0)
+	{
+		encryptionType = NAM_DO_SAQ;
+	}
 	
+	char *pos = strstr(path + *offset + 1, "/");
 	if (pos != NULL)
 	{
-		pos = strstr(pos+1, "/");
-		if (pos != NULL)
-		{
-			*offset = pos - path + 1;
-		}
-		else
-		{
-			*offset = strlen(path);
-		}
+		*offset = pos - path;
 	}
 	else
 	{
-		*offset = strlen(path);
+		*offset = -1;
 	}
 	return encryptionType;
 }
@@ -221,6 +280,7 @@ int getEncryptionType(const char *path, int *offset)
 int decodePath(char *filePath, const char *path)
 { 
 	int encryptionType = -1;
+	int pathStringLength = strlen(path);
 	
 	if (strcmp(path, "/") == 0)
 	{
@@ -228,11 +288,16 @@ int decodePath(char *filePath, const char *path)
 	}
 	else
 	{
-		int offset = -1;
-		encryptionType = getEncryptionType(path, &offset);
-		if (encryptionType != -1)
+		int offset = 0;
+		while(offset != -1)
 		{
-			decodeDirectoryPath(path + offset, encryptionType);
+			decodeDirectoryPath(path, offset + 1, pathStringLength, encryptionType);
+			
+			int nextEncryption = getEncryptionType(path, &offset);
+			if (encryptionType == -1 || nextEncryption != -1)
+			{
+				encryptionType = nextEncryption;
+			}
 		}
 		sprintf(filePath, "%s%s", rootPath, path);
 	}
@@ -243,6 +308,7 @@ int decodePath(char *filePath, const char *path)
 void decodeDirectoryForRename(const char *path, const char *decodedPath)
 {
 	char tempPath[1024];
+	char tempPath2[1024];
 	strcpy(tempPath, path);
 	int slashFinder = strlen(tempPath) - 1;
 	while(tempPath[slashFinder] != '/' && slashFinder >= 0)
@@ -254,16 +320,12 @@ void decodeDirectoryForRename(const char *path, const char *decodedPath)
 		tempPath[slashFinder] = '\0';
 	}
 	
-	int offset = -1;
-	int encryptionType = getEncryptionType(tempPath, &offset);
-	if (encryptionType != -1)
-	{
-		decodeDirectoryPath(tempPath + offset, encryptionType);
-	}
-	strcat(tempPath, path + slashFinder);
+	decodePath(tempPath2, tempPath);
+	
+	strcat(tempPath2, path + slashFinder);
 	if (decodedPath != NULL)
 	{
-		strcpy(decodedPath, tempPath);
+		strcpy(decodedPath, tempPath2);
 	}
 	sprintf(path, "%s%s", rootPath, tempPath);
 }
@@ -281,15 +343,8 @@ void getFileNameFromPath(char *fileName, const char *path)
 
 static int fuse_getattr(const char *path, struct stat *st)
 {
-	int offset = -1;
-	int encryptionType = getEncryptionType(path, &offset);
-	if (encryptionType != -1)
-	{
-		decodeDirectoryPath(path + offset, encryptionType);
-	}
-	
 	char filePath[1024];
-	sprintf(filePath, "%s%s", rootPath, path);
+	decodePath(filePath, path);
 	
 	if (lstat(filePath, st) == -1)
 	{
@@ -326,16 +381,30 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off
 		st.st_ino = dirData->d_ino;
 		st.st_mode = dirData->d_type << 12;
 		
-		strcpy(fileName, dirData->d_name);
-		if (encryptionType != -1)
-		{
+		
+		strcpy(fileName, filePath);
+		strcat(fileName, "/");
+		strcat(fileName, dirData->d_name);
+		if (isRegularFile(fileName))
+		{	
+			strcpy(fileName, dirData->d_name);
 			encryptFile(fileName, 0, strlen(fileName), encryptionType);
 		}
+		else
+		{
+			strcpy(fileName, dirData->d_name);
+			if (encryptionType != NAM_DO_SAQ)
+			{
+				encryptText(fileName, 0, strlen(fileName), encryptionType);
+			}
+		}
+
 		if (filler(buf, fileName, &st, 0)) break;
 	}
 	
 	closedir(directory);
 	
+	/*
 	FILE *fileWriterInnuLogPath = fopen(innuLogPath, "a");
 	time_t currentTime = time(NULL);
 	struct tm currentLocalTime = *localtime(&currentTime);
@@ -353,6 +422,7 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off
 	fprintf(fileWriterInnuLogPath, "%s\n", logText);
 	
 	fclose(fileWriterInnuLogPath);
+	*/
 	
 	return 0;
 }
@@ -360,7 +430,7 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off
 static int fuse_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
 	char filePath[1024];
-	int encryptionType = decodePath(filePath, path);
+	decodePath(filePath, path);
 	
 	int fileDescriptor = 0;
 	
@@ -404,7 +474,7 @@ static int fuse_read(const char *path, char *buf, size_t size, off_t offset, str
 static int fuse_write(const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
 	char filePath[1024];
-	int encryptionType = decodePath(filePath, path);
+	decodePath(filePath, path);
 	
 	FILE *fileWriterWibuLog = fopen(wibuLogPath, "a");
 	fprintf(fileWriterWibuLog, "Write: %s\n", filePath);
