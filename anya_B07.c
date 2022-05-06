@@ -305,7 +305,7 @@ int decodePath(char *filePath, const char *path)
 	return encryptionType;
 }
 
-void decodeDirectoryForRename(const char *path, const char *decodedPath)
+void decodeDirectoryForRename(const char *filePath, const char *path)
 {
 	char tempPath[1024];
 	char tempPath2[1024];
@@ -321,13 +321,10 @@ void decodeDirectoryForRename(const char *path, const char *decodedPath)
 	}
 	
 	decodePath(tempPath2, tempPath);
-	
+	strcat(tempPath, path + slashFinder);
 	strcat(tempPath2, path + slashFinder);
-	if (decodedPath != NULL)
-	{
-		strcpy(decodedPath, tempPath2);
-	}
-	sprintf(path, "%s%s", rootPath, tempPath);
+	strcpy(filePath, tempPath2);
+	strcpy(path, tempPath);
 }
 
 void getFileNameFromPath(char *fileName, const char *path)
@@ -597,9 +594,8 @@ static int fuse_rename(const char *old, const char *new)
 {
 	char filePathOld[1024];
 	char filePathNew[1024];
-	strcpy(filePathOld, old);
-	decodePath(old, filePathOld);
-	decodeDirectoryForRename(new, filePathNew);
+	decodePath(filePathOld, old);
+	decodeDirectoryForRename(filePathNew, new);
 	
 	char fileNameOld[1024];
 	char fileNameNew[1024];
@@ -638,7 +634,7 @@ static int fuse_rename(const char *old, const char *new)
 	
 	fclose(fileWriterInnuLogPath);
 	
-	return rename(old, new);
+	return rename(filePathOld, filePathNew);
 }
 
 static struct fuse_operations fuseAnya = {
