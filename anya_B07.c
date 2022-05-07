@@ -338,6 +338,40 @@ void getFileNameFromPath(char *fileName, const char *path)
 	strcpy(fileName, path + offset + 1);
 }
 
+void writeLog(char level[], char operand[], char arg1[], char arg2[])
+{
+	FILE *fileWriterInnuLogPath = fopen(innuLogPath, "a");
+	time_t currentTime = time(NULL);
+	struct tm currentLocalTime = *localtime(&currentTime);
+	char logText[256];
+	
+	sprintf(logText, "%s::%02d%02d%04d-%02d:%02d:%02d::%s",
+		level,
+		currentLocalTime.tm_mday, 
+		currentLocalTime.tm_mon,
+		currentLocalTime.tm_year + 1900,
+		currentLocalTime.tm_hour,
+		currentLocalTime.tm_min,
+		currentLocalTime.tm_sec,
+		operand
+	);
+
+	if (strlen(arg1) != 0)
+	{
+		strcat(logText, "::");
+		strcat(logText, arg1);
+	}
+
+	if (strlen(arg2) != 0)
+	{
+		strcat(logText, "::");
+		strcat(logText, arg2);
+	}
+	fprintf(fileWriterInnuLogPath, "%s\n", logText);
+	
+	fclose(fileWriterInnuLogPath);
+}
+
 static int fuse_getattr(const char *path, struct stat *st)
 {
 	char filePath[1024];
@@ -401,26 +435,6 @@ static int fuse_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off
 	
 	closedir(directory);
 	
-	/*
-	FILE *fileWriterInnuLogPath = fopen(innuLogPath, "a");
-	time_t currentTime = time(NULL);
-	struct tm currentLocalTime = *localtime(&currentTime);
-	char logText[256];
-	
-	sprintf(logText, "WARNING::%02d%02d%04d-%02d:%02d:%02d::READDIR::%s", 
-		currentLocalTime.tm_mday, 
-		currentLocalTime.tm_mon,
-		currentLocalTime.tm_year + 1900,
-		currentLocalTime.tm_hour,
-		currentLocalTime.tm_min,
-		currentLocalTime.tm_sec,
-		path
-	);
-	fprintf(fileWriterInnuLogPath, "%s\n", logText);
-	
-	fclose(fileWriterInnuLogPath);
-	*/
-	
 	return 0;
 }
 
@@ -443,23 +457,7 @@ static int fuse_read(const char *path, char *buf, size_t size, off_t offset, str
 	int res = pread(fi->fh, buf, size, offset);
 	close(fi->fh);
 	
-	FILE *fileWriterInnuLogPath = fopen(innuLogPath, "a");
-	time_t currentTime = time(NULL);
-	struct tm currentLocalTime = *localtime(&currentTime);
-	char logText[256];
-	
-	sprintf(logText, "INFO::%02d%02d%04d-%02d:%02d:%02d::READ::%s", 
-		currentLocalTime.tm_mday, 
-		currentLocalTime.tm_mon,
-		currentLocalTime.tm_year + 1900,
-		currentLocalTime.tm_hour,
-		currentLocalTime.tm_min,
-		currentLocalTime.tm_sec,
-		path
-	);
-	fprintf(fileWriterInnuLogPath, "%s\n", logText);
-	
-	fclose(fileWriterInnuLogPath);
+	writeLog("INFO", "READ", path, "");
 	
 	if (res == -1)
 	{
@@ -491,23 +489,7 @@ static int fuse_write(const char *path, const char *buf, size_t size, off_t offs
 	pwrite(fi->fh, buf, size, offset);
 	close(fi->fh);
 	
-	FILE *fileWriterInnuLogPath = fopen(innuLogPath, "a");
-	time_t currentTime = time(NULL);
-	struct tm currentLocalTime = *localtime(&currentTime);
-	char logText[256];
-	
-	sprintf(logText, "INFO::%02d%02d%04d-%02d:%02d:%02d::WRITE::%s", 
-		currentLocalTime.tm_mday, 
-		currentLocalTime.tm_mon,
-		currentLocalTime.tm_year + 1900,
-		currentLocalTime.tm_hour,
-		currentLocalTime.tm_min,
-		currentLocalTime.tm_sec,
-		path
-	);
-	fprintf(fileWriterInnuLogPath, "%s\n", logText);
-	
-	fclose(fileWriterInnuLogPath);
+	writeLog("INFO", "WRITE", path, "");
 	
 	return size;
 }
@@ -517,23 +499,7 @@ static int fuse_mkdir(const char *path, mode_t mode)
 	char filePath[1024];
 	decodePath(filePath, path);
 	
-	FILE *fileWriterInnuLogPath = fopen(innuLogPath, "a");
-	time_t currentTime = time(NULL);
-	struct tm currentLocalTime = *localtime(&currentTime);
-	char logText[256];
-	
-	sprintf(logText, "INFO::%02d%02d%04d-%02d:%02d:%02d::MKDIR::%s", 
-		currentLocalTime.tm_mday, 
-		currentLocalTime.tm_mon,
-		currentLocalTime.tm_year + 1900,
-		currentLocalTime.tm_hour,
-		currentLocalTime.tm_min,
-		currentLocalTime.tm_sec,
-		path
-	);
-	fprintf(fileWriterInnuLogPath, "%s\n", logText);
-	
-	fclose(fileWriterInnuLogPath);
+	writeLog("INFO", "MKDIR", path, "");
 	
 	return mkdir(filePath, mode);
 }
@@ -543,23 +509,7 @@ static int fuse_rmdir(const char *path)
 	char filePath[1024];
 	decodePath(filePath, path);
 	
-	FILE *fileWriterInnuLogPath = fopen(innuLogPath, "a");
-	time_t currentTime = time(NULL);
-	struct tm currentLocalTime = *localtime(&currentTime);
-	char logText[256];
-	
-	sprintf(logText, "WARNING::%02d%02d%04d-%02d:%02d:%02d::RMDIR::%s", 
-		currentLocalTime.tm_mday, 
-		currentLocalTime.tm_mon,
-		currentLocalTime.tm_year + 1900,
-		currentLocalTime.tm_hour,
-		currentLocalTime.tm_min,
-		currentLocalTime.tm_sec,
-		path
-	);
-	fprintf(fileWriterInnuLogPath, "%s\n", logText);
-	
-	fclose(fileWriterInnuLogPath);
+	writeLog("WARNING", "RMDIR", path, "");
 	
 	return rmdir(filePath);
 }
@@ -569,23 +519,7 @@ static int fuse_unlink(const char *path)
 	char filePath[1024];
 	decodePath(filePath, path);
 	
-	FILE *fileWriterInnuLogPath = fopen(innuLogPath, "a");
-	time_t currentTime = time(NULL);
-	struct tm currentLocalTime = *localtime(&currentTime);
-	char logText[256];
-	
-	sprintf(logText, "WARNING::%02d%02d%04d-%02d:%02d:%02d::UNLINK::%s", 
-		currentLocalTime.tm_mday, 
-		currentLocalTime.tm_mon,
-		currentLocalTime.tm_year + 1900,
-		currentLocalTime.tm_hour,
-		currentLocalTime.tm_min,
-		currentLocalTime.tm_sec,
-		path
-	);
-	fprintf(fileWriterInnuLogPath, "%s\n", logText);
-	
-	fclose(fileWriterInnuLogPath);
+	writeLog("WARNING", "UNLINK", path, "");
 	
 	return unlink(filePath);
 }
@@ -613,26 +547,8 @@ static int fuse_rename(const char *old, const char *new)
 		fprintf(fileWriterWibuLog, "RENAME terenkripsi %s --> %s\n", old, new);
 	}
 	fclose(fileWriterWibuLog);
-	
-	
-	FILE *fileWriterInnuLogPath = fopen(innuLogPath, "a");
-	time_t currentTime = time(NULL);
-	struct tm currentLocalTime = *localtime(&currentTime);
-	char logText[4096];
-	
-	sprintf(logText, "INFO::%02d%02d%04d-%02d:%02d:%02d::RENAME::%s::%s", 
-		currentLocalTime.tm_mday, 
-		currentLocalTime.tm_mon,
-		currentLocalTime.tm_year + 1900,
-		currentLocalTime.tm_hour,
-		currentLocalTime.tm_min,
-		currentLocalTime.tm_sec,
-		old,
-		new
-	);
-	fprintf(fileWriterInnuLogPath, "%s\n", logText);
-	
-	fclose(fileWriterInnuLogPath);
+
+	writeLog("INFO", "RENAME", old, new);
 	
 	return rename(filePathOld, filePathNew);
 }
