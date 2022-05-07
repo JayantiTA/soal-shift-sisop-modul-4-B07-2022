@@ -448,7 +448,7 @@ static int fuse_read(const char *path, char *buf, size_t size, off_t offset, str
 	struct tm currentLocalTime = *localtime(&currentTime);
 	char logText[256];
 	
-	sprintf(logText, "WARNING::%02d%02d%04d-%02d:%02d:%02d::READ::%s", 
+	sprintf(logText, "INFO::%02d%02d%04d-%02d:%02d:%02d::READ::%s", 
 		currentLocalTime.tm_mday, 
 		currentLocalTime.tm_mon,
 		currentLocalTime.tm_year + 1900,
@@ -496,7 +496,7 @@ static int fuse_write(const char *path, const char *buf, size_t size, off_t offs
 	struct tm currentLocalTime = *localtime(&currentTime);
 	char logText[256];
 	
-	sprintf(logText, "WARNING::%02d%02d%04d-%02d:%02d:%02d::WRITE::%s", 
+	sprintf(logText, "INFO::%02d%02d%04d-%02d:%02d:%02d::WRITE::%s", 
 		currentLocalTime.tm_mday, 
 		currentLocalTime.tm_mon,
 		currentLocalTime.tm_year + 1900,
@@ -627,8 +627,8 @@ static int fuse_rename(const char *old, const char *new)
 		currentLocalTime.tm_hour,
 		currentLocalTime.tm_min,
 		currentLocalTime.tm_sec,
-		filePathOld,
-		filePathNew
+		old,
+		new
 	);
 	fprintf(fileWriterInnuLogPath, "%s\n", logText);
 	
