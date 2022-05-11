@@ -170,7 +170,14 @@ void decodeDirectoryPath(const char *path, int offset, int length, int encryptio
 	{
 		if ((slashPos = strstr(path + offset, "/")) != NULL)
 		{
-			decryptText(path, offset, slashPos - path, encryptionType);
+			if (encryptionType == NAM_DO_SAQ)
+			{
+				decryptText(path, offset, -1, encryptionType);
+			}
+			else
+			{
+				decryptText(path, offset, slashPos - path, encryptionType);
+			}
 		}
 		else
 		{
@@ -497,7 +504,7 @@ static int fuse_write(const char *path, const char *buf, size_t size, off_t offs
 static int fuse_mkdir(const char *path, mode_t mode)
 {
 	char filePath[1024];
-	decodePath(filePath, path);
+	decodeDirectoryForRename(filePath, path);
 	
 	writeLog("INFO", "MKDIR", path, "");
 	
