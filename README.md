@@ -708,3 +708,25 @@ int main(int argc, char** argv)
 ```
 
 Pada main, sebelum fuse dibuat akan menyimpan lokasi "/home/[USER]/Documents", kemudian current working directory untuk log wibu, dan path untuk log innu.
+
+## Dokumentasi
+
+### nomor 1
+
+![dokumentasi_1](/uploads/6b07815671a8fe3bba3e58833d206a9a/dokumentasi_1.png)
+
+![dokumentasi_2](/uploads/2b4fcf55c02e33b17582db5ea18621c4/dokumentasi_2.png)
+
+![dokumentasi_3](/uploads/10936b2e7c575315cca4237dce177396/dokumentasi_3.png)
+
+### nomor 2
+
+![dokumentasi_4](/uploads/8ecf455392ba80598db7f42e67214d11/dokumentasi_4.png)
+
+### nomor 3
+
+![dokumentasi_6](/uploads/98b9f03a5769655f9188b3a3027d9e59/dokumentasi_6.png)
+
+![dokumentasi_7](/uploads/7580c6b70e1978caacfbf430f7edcd05/dokumentasi_7.png)
+
+![dokumentasi_8](/uploads/0c293cdee329ae3d2279be05292977ae/dokumentasi_8.png)
