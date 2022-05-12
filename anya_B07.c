@@ -71,6 +71,46 @@ char vigenereCipherDecode(char c, int i)
 	return c;
 }
 
+void convertBinerToDecimal(char decimal[], char binary[])
+{
+	unsigned long long int decimalValue = 0;
+	int length = strlen(binary);
+	for (int i = 0; i < length; i++)
+	{
+		decimalValue <<= 1;
+		decimalValue += binary[i] - '0';
+	}
+	sprintf(decimal, "%d", decimalValue);
+}
+
+void convertDecimalToBinary(char binary[], char decimal[])
+{
+	unsigned long long int decimalValue = 0;
+	int length = strlen(decimal);
+	for (int i = 0; i < length; i++)
+	{
+		decimalValue *= 10;
+		decimalValue += decimal[i] - '0';
+	}
+	
+	length = 0;
+	for (length = 0; decimalValue > 0; length++)
+	{
+		binary[length] = decimalValue % 2 + '0';
+		decimalValue >>= 1;
+	}
+	
+	char temp;
+	for (int i = 0; i < length/2; i++)
+	{
+		temp = binary[i];
+		binary[i] = binary[length - 1 - i];
+		binary[length - 1 - i] = temp;
+	}
+	
+	binary[length] = '\0';
+}
+
 int isRegularFile(const char *path)
 {
 	struct stat pathStat;
@@ -106,17 +146,18 @@ void decryptText(char *str, int startIndex, int endIndex, int encryptionType)
 	}
 	else if (encryptionType == NAM_DO_SAQ)
 	{
-		int strLength = strlen(str);
 		if (endIndex != -1)
 		{
-			while(endIndex < strLength)
+			char binary[128];
+			convertDecimalToBinary(binary, str + endIndex);
+			int length = strlen(binary);
+			for (int i = length-1; i >= 0; i--)
 			{
-				if (str[endIndex] == '1')
+				if (binary[i] == '1')
 				{
 					str[startIndex] = str[startIndex] - 'A' + 'a';
 				}
-				startIndex++;
-				endIndex++;
+				startIndex--;
 			}
 		}
 	}
@@ -146,18 +187,30 @@ void decryptFile(char *str, int startIndex, int endIndex, int encryptionType)
 	}
 	else if (encryptionType == NAM_DO_SAQ)
 	{
+		int fileExtensionPosDecimalCode = endIndex - 1;
+		while(fileExtensionPosDecimalCode >= startIndex && str[fileExtensionPosDecimalCode] != '.')
+		{
+			fileExtensionPosDecimalCode--;
+		}
+		
+		fileExtensionPos = fileExtensionPosDecimalCode - 1;
 		while(fileExtensionPos >= startIndex && str[fileExtensionPos] != '.')
 		{
 			fileExtensionPos--;
 		}
-		if (fileExtensionPos < startIndex)
+		
+		if (fileExtensionPosDecimalCode < startIndex)
 		{
 			decryptText(str, startIndex, -1, encryptionType);
 		}
+		else if (fileExtensionPos < 0)
+		{
+			decryptText(str, fileExtensionPosDecimalCode - 1, fileExtensionPosDecimalCode + 1, encryptionType);
+		}
 		else
 		{
-			decryptText(str, startIndex, fileExtensionPos + 1, encryptionType);
-			str[fileExtensionPos] = '\0';
+			decryptText(str, fileExtensionPos - 1, fileExtensionPosDecimalCode + 1, encryptionType);
+			str[fileExtensionPosDecimalCode] = '\0';
 		}
 	}
 }
@@ -227,8 +280,10 @@ void encryptText(char *str, int startIndex, int endIndex, int encryptionType)
 			}
 		}
 		biner[endIndex - startIndex] = '\0';
+		char decimal[128];
+		convertBinerToDecimal(decimal, biner);
 		strcat(str, ".");
-		strcat(str, biner);	 
+		strcat(str, decimal);
 	}
 }
 
@@ -508,7 +563,7 @@ static int fuse_mkdir(const char *path, mode_t mode)
 	
 	writeLog("INFO", "MKDIR", path, "");
 	
-	return mkdir(filePath, mode);
+	return mkdir(filePath, mode |S_IFDIR);
 }
 
 static int fuse_rmdir(const char *path)
